@@ -44,8 +44,7 @@ LEFT JOIN drug
 ON prescription.drug_name = drug.drug_name
 GROUP BY specialty_description, opioid_drug_flag
 HAVING opioid_drug_flag = 'Y'
-ORDER BY SUM(total_claim_count) DESC
-LIMIT 3;
+ORDER BY SUM(total_claim_count) DESC;
 
 -- ANSWER: Nurse Practitioner with 900,845
 
@@ -53,16 +52,38 @@ LIMIT 3;
 
 SELECT specialty_description, SUM(total_claim_count)
 FROM prescription
-LEFT JOIN prescriber
+RIGHT JOIN prescriber
 ON prescriber.npi = prescription.npi
 GROUP BY specialty_description
-HAVING SUM(total_claim_count) = '0'
-ORDER BY SUM(total_claim_count) ASC
-LIMIT 3;
+HAVING SUM(total_claim_count) IS NULL
+ORDER BY SUM(total_claim_count) ASC;
 
 --     d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
 
+CREATE TEMP TABLE opioid_sum_table as
+SELECT specialty_description, SUM(total_claim_count) as opioid_sum
+FROM prescription
+LEFT JOIN prescriber
+ON prescriber.npi = prescription.npi
+LEFT JOIN drug 
+ON prescription.drug_name = drug.drug_name
+WHERE opioid_drug_flag = 'Y'
+GROUP BY specialty_description
+ORDER BY SUM(total_claim_count) DESC;
 
+SELECT specialty_description, (opioid_sum/SUM(total_claim_count))*100 as opioid_percentage
+FROM prescription
+LEFT JOIN prescriber
+ON prescriber.npi = prescription.npi
+LEFT JOIN drug
+ON prescription.drug_name = drug.drug_name
+LEFT JOIN opioid_sum_table
+USING(specialty_description)
+WHERE opioid_sum IS NOT NULL
+GROUP BY specialty_description, opioid_sum
+ORDER BY opioid_percentage DESC;
+
+DROP TABLE opioid_sum_table;
 
 -- 3. 
 --     a. Which drug (generic_name) had the highest total drug cost?
